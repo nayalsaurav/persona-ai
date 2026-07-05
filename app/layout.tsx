@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ReactQueryProvider } from "@/components/providers/react-query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { AppSidebarProvider } from "@/components/sidebar/sidebar-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 const playfairDisplayHeading = Playfair_Display({ subsets: ['latin'], variable: '--font-heading' });
 
@@ -36,9 +38,12 @@ export default function RootLayout({
         >
           <ReactQueryProvider>
             <TooltipProvider>
-              {children}
+              <AppSidebarProvider>
+                {children}
+              </AppSidebarProvider>
             </TooltipProvider>
           </ReactQueryProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

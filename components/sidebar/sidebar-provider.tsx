@@ -30,11 +30,11 @@ function SidebarKeyboardShortcut() {
 
 export function AppSidebarProvider({ children }: { children?: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen className="h-svh overflow-hidden">
       <SidebarKeyboardShortcut />
       <AppSidebar />
 
-      <SidebarInset className="relative">
+      <SidebarInset className="relative min-h-0">
         {/* Top bar */}
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/40 px-4">
           <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function AppSidebarProvider({ children }: { children?: React.ReactNode })
         </header>
 
         {/* Page content */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0">
           {children}
         </main>
       </SidebarInset>

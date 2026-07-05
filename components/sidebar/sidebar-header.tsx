@@ -14,9 +14,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useRouter } from "next/navigation"
+import { authClient } from "@/lib/auth-client"
 
 export function AppSidebarHeader() {
   const { open } = useSidebar()
+  const router = useRouter()
+  const { data: session } = authClient.useSession()
+
+  const handleNewChat = () => {
+    if (!session) return
+    router.push("/")
+  }
 
   return (
     <SidebarHeader className="px-3 py-3">
@@ -31,14 +40,35 @@ export function AppSidebarHeader() {
                 <span className="font-heading text-base font-bold tracking-widest">Persona AI</span>
               </SidebarMenuButton>
               <div className="flex items-center gap-0.5">
-                <Button variant="ghost" size="icon-sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
-                  <SearchIcon />
-                  <span className="sr-only">Search</span>
-                </Button>
-                <Button variant="ghost" size="icon-sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
-                  <PlusIcon />
-                  <span className="sr-only">New chat</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button 
+                      variant="ghost" 
+                      size="icon-sm" 
+                      className="text-sidebar-foreground hover:bg-sidebar-accent"
+                      disabled={!session}
+                    >
+                      <SearchIcon />
+                      <span className="sr-only">Search</span>
+                    </Button>
+                  } />
+                  <TooltipContent side="bottom">Search</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button 
+                      variant="ghost" 
+                      size="icon-sm" 
+                      className="text-sidebar-foreground hover:bg-sidebar-accent"
+                      onClick={handleNewChat}
+                      disabled={!session}
+                    >
+                      <PlusIcon />
+                      <span className="sr-only">New chat</span>
+                    </Button>
+                  } />
+                  <TooltipContent side="bottom">New chat</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           ) : (
@@ -48,22 +78,31 @@ export function AppSidebarHeader() {
               </span>
               <Tooltip>
                 <TooltipTrigger render={
-                  <Button variant="ghost" size="icon-sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
+                  <Button 
+                    variant="ghost" 
+                    size="icon-sm" 
+                    className="text-sidebar-foreground hover:bg-sidebar-accent"
+                    disabled={!session}
+                  >
                     <SearchIcon />
                     <span className="sr-only">Search</span>
                   </Button>
-                }>
-                </TooltipTrigger>
+                } />
                 <TooltipContent side="right">Search</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger render={
-                  <Button variant="ghost" size="icon-sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
+                  <Button 
+                    variant="ghost" 
+                    size="icon-sm" 
+                    className="text-sidebar-foreground hover:bg-sidebar-accent"
+                    onClick={handleNewChat}
+                    disabled={!session}
+                  >
                     <PlusIcon />
                     <span className="sr-only">New chat</span>
                   </Button>
-                }>
-                </TooltipTrigger>
+                } />
                 <TooltipContent side="right">New chat</TooltipContent>
               </Tooltip>
             </div>

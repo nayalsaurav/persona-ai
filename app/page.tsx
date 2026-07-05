@@ -1,9 +1,10 @@
-import { AppSidebarProvider } from "@/components/sidebar/sidebar-provider"
+import { ChatInterface } from "@/components/chat-interface/chat-interface"
+import { Suspense } from "react"
 
 export default function Home() {
   return (
-    <AppSidebarProvider>
-      {/* Main chat area — empty for now */}
-    </AppSidebarProvider>
+    <Suspense fallback={null}>
+      <ChatInterface />
+    </Suspense>
   )
 }
