@@ -1,31 +1,29 @@
 import * as React from "react";
 import { Play, ListVideo, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import hljs from "highlight.js";
+import { z } from "zod";
+import "highlight.js/styles/github-dark.css";
 
-interface YouTubeCard {
-  type: "Video" | "Playlist";
-  title: string;
-  url: string;
-  channel: string;
-  thumbnail?: string;
-  description: string;
-}
+const YouTubeCardSchema = z.object({
+  type: z.enum(["Video", "Playlist"]),
+  title: z.string(),
+  url: z.string(),
+  channel: z.string(),
+  thumbnail: z.string().optional(),
+  description: z.string().optional().default(""),
+});
+
+type YouTubeCard = z.infer<typeof YouTubeCardSchema>;
 
 function tryParseYouTubeCards(code: string): YouTubeCard[] | null {
   try {
     const parsed = JSON.parse(code.trim());
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      const isValid = parsed.every(item => 
-        item &&
-        typeof item === 'object' &&
-        (item.type === 'Video' || item.type === 'Playlist') &&
-        typeof item.title === 'string' &&
-        typeof item.url === 'string' &&
-        typeof item.channel === 'string'
-      );
-      if (isValid) {
-        return parsed as YouTubeCard[];
-      }
+    const result = z.array(YouTubeCardSchema).nonempty().safeParse(parsed);
+    if (result.success) {
+      return result.data;
     }
   } catch (e) {
     // Ignore and fall back to regular code block rendering
@@ -113,41 +111,127 @@ function YouTubeCardComponent({ card }: { card: YouTubeCard }) {
   );
 }
 
-function parseInlineStyles(text: string): React.ReactNode[] {
-  const tokenRegex = /(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g;
-  const parts = text.split(tokenRegex);
+const markdownComponents = {
+  h1: ({ children }: any) => (
+    <h1 className="text-xl font-bold mt-4 mb-2 text-foreground first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }: any) => (
+    <h2 className="text-lg font-semibold mt-3 mb-1.5 text-foreground first:mt-0">{children}</h2>
+  ),
+  h3: ({ children }: any) => (
+    <h3 className="text-base font-semibold mt-2 mb-1 text-foreground first:mt-0">{children}</h3>
+  ),
+  p: ({ children }: any) => (
+    <p className="leading-relaxed text-sm my-1.5 last:mb-0 text-foreground/90">{children}</p>
+  ),
+  ul: ({ children }: any) => (
+    <ul className="list-disc pl-5 my-2 space-y-1 text-sm text-foreground/90">{children}</ul>
+  ),
+  ol: ({ children }: any) => (
+    <ol className="list-decimal pl-5 my-2 space-y-1 text-sm text-foreground/90">{children}</ol>
+  ),
+  li: ({ children }: any) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  blockquote: ({ children }: any) => (
+    <blockquote className="border-l-4 border-primary/30 pl-4 my-3 italic text-muted-foreground bg-muted/20 py-1 rounded-r">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }: any) => (
+    <div className="my-4 overflow-x-auto rounded-lg border border-border/40">
+      <table className="w-full text-xs text-left border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: any) => (
+    <thead className="bg-muted text-muted-foreground uppercase font-bold text-[10px] tracking-wider border-b border-border/40">
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }: any) => (
+    <tbody className="divide-y divide-border/30">{children}</tbody>
+  ),
+  tr: ({ children }: any) => (
+    <tr className="hover:bg-muted/10 transition-colors">{children}</tr>
+  ),
+  th: ({ children }: any) => (
+    <th className="px-4 py-2 font-semibold">{children}</th>
+  ),
+  td: ({ children }: any) => (
+    <td className="px-4 py-2 text-foreground/80">{children}</td>
+  ),
+  strong: ({ children }: any) => (
+    <strong className="font-semibold text-foreground">{children}</strong>
+  ),
+  a: ({ href, children }: any) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary hover:underline inline-flex items-center gap-0.5 font-medium transition-colors"
+    >
+      {children}
+    </a>
+  ),
+  code({ node, className, children, ...props }: any) {
+    const match = /language-(\w+)/.exec(className || "");
+    const inline = !match;
 
-  return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={idx} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
+    if (inline) {
       return (
-        <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono border border-border/40 text-rose-500 dark:text-rose-400">
-          {part.slice(1, -1)}
+        <code
+          className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/40 text-rose-500 dark:text-rose-400 font-semibold"
+          {...props}
+        >
+          {children}
         </code>
       );
     }
-    if (part.startsWith("[") && part.includes("](")) {
-      const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
-      if (linkMatch) {
-        const [, label, url] = linkMatch;
+
+    const language = match[1];
+    const codeContent = String(children).replace(/\n$/, "");
+
+    if (language.toLowerCase() === "json") {
+      const cards = tryParseYouTubeCards(codeContent);
+      if (cards) {
         return (
-          <a
-            key={idx}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-0.5 font-medium transition-colors"
-          >
-            {label}
-          </a>
+          <div className="flex flex-col gap-2 my-2">
+            {cards.map((card, cardIdx) => (
+              <YouTubeCardComponent key={cardIdx} card={card} />
+            ))}
+          </div>
         );
       }
     }
-    return part;
-  });
-}
+
+    let highlightedHtml = codeContent;
+    try {
+      if (language && hljs.getLanguage(language)) {
+        highlightedHtml = hljs.highlight(codeContent, { language }).value;
+      } else {
+        highlightedHtml = hljs.highlightAuto(codeContent).value;
+      }
+    } catch (e) {
+      // Fallback
+    }
+
+    return (
+      <div className="my-3 rounded-lg overflow-hidden border border-border/50 bg-[#0d1117] font-mono text-xs shadow-xs">
+        {language && (
+          <div className="bg-zinc-900 px-4 py-1.5 text-[9px] font-bold text-zinc-400 uppercase border-b border-zinc-800 tracking-wider select-none">
+            {language}
+          </div>
+        )}
+        <pre className="p-4 overflow-x-auto select-all text-zinc-300 leading-relaxed">
+          <code
+            className="hljs"
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+          />
+        </pre>
+      </div>
+    );
+  },
+};
 
 interface FormattedMessageProps {
   content: string;
@@ -170,57 +254,14 @@ export function FormattedMessage({ content }: FormattedMessageProps) {
     }
   }
 
-  // Split by code blocks first
-  const parts = React.useMemo(() => cleanContent.split(/(```[\s\S]*?```)/g), [cleanContent]);
-
   return (
     <div className="space-y-1.5">
-      {parts.map((part, idx) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
-          const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-          const language = match?.[1] || "";
-          const code = match?.[2] || part.slice(3, -3);
-          
-          if (language.toLowerCase() === "json") {
-            const cards = tryParseYouTubeCards(code);
-            if (cards) {
-              return (
-                <div key={idx} className="flex flex-col gap-2 my-2">
-                  {cards.map((card, cardIdx) => (
-                    <YouTubeCardComponent key={cardIdx} card={card} />
-                  ))}
-                </div>
-              );
-            }
-          }
-
-          return (
-            <div key={idx} className="my-3 rounded-lg overflow-hidden border border-border/50 bg-muted/40 font-mono text-xs shadow-xs">
-              {language && (
-                <div className="bg-muted px-4 py-1.5 text-[9px] font-bold text-muted-foreground uppercase border-b border-border/30 tracking-wider select-none">
-                  {language}
-                </div>
-              )}
-              <pre className="p-4 overflow-x-auto select-all text-muted-foreground leading-relaxed">
-                <code>{code.trim()}</code>
-              </pre>
-            </div>
-          );
-        }
-
-        // Split paragraphs in regular blocks
-        const paragraphs = part.split("\n\n");
-        return paragraphs.map((para, pIdx) => {
-          const trimmed = para.trim();
-          if (!trimmed) return null;
-
-          return (
-            <p key={`p-${idx}-${pIdx}`} className="leading-relaxed text-sm">
-              {parseInlineStyles(trimmed)}
-            </p>
-          );
-        });
-      })}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
+        {cleanContent}
+      </ReactMarkdown>
 
       {/* Pulsing skeleton loader representing incoming card data */}
       {showLoader && (
@@ -240,3 +281,4 @@ export function FormattedMessage({ content }: FormattedMessageProps) {
     </div>
   );
 }
+
