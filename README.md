@@ -180,7 +180,7 @@ The dynamic system prompts are built dynamically inside the [personas.ts](./lib/
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/username/persona-ai.git
+git clone https://github.com/nayalsaurav/persona-ai.git
 cd persona-ai
 npm install
 ```
